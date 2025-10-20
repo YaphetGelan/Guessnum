@@ -15,9 +15,176 @@ const io = socketIo(server, {
 app.use(cors());
 app.use(express.json());
 
+// API Routes
+app.get('/api/daily-game/:includeZero', (req, res) => {
+  const includeZero = req.params.includeZero === 'true';
+  const dailyGame = getTodaysDailyGame(includeZero);
+  
+  res.json({
+    date: dailyGame.date,
+    includeZero: dailyGame.includeZero,
+    // Don't send the secret to the client
+    playerCount: dailyGame.players.size
+  });
+});
+
+app.post('/api/daily-game/submit', (req, res) => {
+  const { userId, guess, includeZero } = req.body;
+  const dailyGame = getTodaysDailyGame(includeZero);
+  
+  // Validate guess
+  if (guess.length !== 4) {
+    return res.status(400).json({ error: 'Please enter 4 digits' });
+  }
+  
+  const hasDuplicates = new Set(guess).size !== 4;
+  if (hasDuplicates) {
+    return res.status(400).json({ error: 'All digits must be different' });
+  }
+  
+  if (!includeZero && guess.includes('0')) {
+    return res.status(400).json({ error: 'Digit 0 is not allowed in this mode' });
+  }
+  
+  // Check if user already played today
+  if (dailyGame.players.has(userId)) {
+    return res.status(400).json({ error: 'You already played today\'s game' });
+  }
+  
+  // Calculate feedback
+  const feedback = calculateFeedback(guess, dailyGame.secret);
+  
+  // Store player's attempt
+  const playerData = {
+    userId,
+    guess,
+    correctNumbers: feedback.correctNumbers,
+    correctPositions: feedback.correctPositions,
+    won: feedback.correctPositions === 4,
+    submittedAt: Date.now()
+  };
+  
+  dailyGame.players.set(userId, playerData);
+  
+  // Update user stats
+  if (!userStats.has(userId)) {
+    userStats.set(userId, {
+      totalGames: 0,
+      wins: 0,
+      losses: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      lastPlayedDate: null
+    });
+  }
+  
+  const stats = userStats.get(userId);
+  const today = getTodayString();
+  const lastPlayed = stats.lastPlayedDate;
+  
+  // Update streak logic
+  if (lastPlayed === today) {
+    // Already played today, don't update streak
+  } else if (lastPlayed === getYesterdayString()) {
+    // Played yesterday, continue streak
+    stats.currentStreak++;
+  } else if (lastPlayed && lastPlayed !== today) {
+    // Missed a day, reset streak
+    stats.currentStreak = 1;
+  } else {
+    // First time playing
+    stats.currentStreak = 1;
+  }
+  
+  stats.totalGames++;
+  stats.lastPlayedDate = today;
+  
+  if (playerData.won) {
+    stats.wins++;
+  } else {
+    stats.losses++;
+  }
+  
+  stats.longestStreak = Math.max(stats.longestStreak, stats.currentStreak);
+  
+  res.json({
+    feedback,
+    won: playerData.won,
+    stats: {
+      totalGames: stats.totalGames,
+      wins: stats.wins,
+      losses: stats.losses,
+      currentStreak: stats.currentStreak,
+      longestStreak: stats.longestStreak
+    }
+  });
+});
+
+app.get('/api/user-stats/:userId', (req, res) => {
+  const { userId } = req.params;
+  const stats = userStats.get(userId);
+  
+  if (!stats) {
+    return res.json({
+      totalGames: 0,
+      wins: 0,
+      losses: 0,
+      currentStreak: 0,
+      longestStreak: 0
+    });
+  }
+  
+  res.json(stats);
+});
+
+function getYesterdayString() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toISOString().split('T')[0];
+}
+
 // Game state storage
 const games = new Map();
 const players = new Map();
+
+// Daily game storage
+const dailyGames = new Map();
+const userStats = new Map();
+
+// Get today's date as string (YYYY-MM-DD)
+function getTodayString() {
+  return new Date().toISOString().split('T')[0];
+}
+
+// Generate daily secret number
+function generateDailySecret(includeZero = false) {
+  let num = '';
+  const digits = includeZero ? [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] : [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  for (let i = 0; i < 4; i++) {
+    const randIdx = Math.floor(Math.random() * digits.length);
+    num += digits[randIdx];
+    digits.splice(randIdx, 1);
+  }
+  return num;
+}
+
+// Get or create today's daily game
+function getTodaysDailyGame(includeZero = false) {
+  const today = getTodayString();
+  const gameKey = `${today}-${includeZero ? 'with0' : 'no0'}`;
+  
+  if (!dailyGames.has(gameKey)) {
+    dailyGames.set(gameKey, {
+      date: today,
+      secret: generateDailySecret(includeZero),
+      includeZero,
+      players: new Map(),
+      createdAt: Date.now()
+    });
+  }
+  
+  return dailyGames.get(gameKey);
+}
 
 // Generate secret number (1-9, no duplicates, no 0)
 function generateSecretNumber() {

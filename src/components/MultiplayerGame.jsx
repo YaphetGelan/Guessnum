@@ -21,6 +21,10 @@ const MultiplayerGame = ({ onBackToSingle }) => {
   const [unlimitedMode, setUnlimitedMode] = useState(false);
   const [isHost, setIsHost] = useState(false);
 
+  const toggleUnlimitedMode = () => {
+    setUnlimitedMode(!unlimitedMode);
+  };
+
   useEffect(() => {
     const newSocket = io('http://localhost:3001');
     setSocket(newSocket);
@@ -40,8 +44,8 @@ const MultiplayerGame = ({ onBackToSingle }) => {
 
     newSocket.on('gameUpdate', (data) => {
       setCurrentPlayer(data.currentPlayer);
-      setMyGuesses(data[`player${playerNumber}Guesses`] || []);
-      setOpponentGuesses(data[`player${playerNumber === 1 ? 2 : 1}Guesses`] || []);
+      setMyGuesses(data.player1Guesses || []);
+      setOpponentGuesses(data.player2Guesses || []);
       setGameOver(data.gameOver);
       setWinner(data.winner);
       
