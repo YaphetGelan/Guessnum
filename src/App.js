@@ -5,42 +5,42 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { RefreshCw, Star, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-const generateNewGame = () => {
+  const generateNewGame = () => {
   let num = '';
-  const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-  for (let i = 0; i < 4; i++) {
-    const randIdx = Math.floor(Math.random() * digits.length);
-    num += digits[randIdx];
-    digits.splice(randIdx, 1);
-  }
+    const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    for (let i = 0; i < 4; i++) {
+      const randIdx = Math.floor(Math.random() * digits.length);
+      num += digits[randIdx];
+      digits.splice(randIdx, 1);
+    }
   return num;
-};
+  };
 
-const calculateFeedback = (guess, secret) => {
-  let correctPositions = 0;
-  let correctNumbers = 0;
+  const calculateFeedback = (guess, secret) => {
+    let correctPositions = 0;
+    let correctNumbers = 0;
   const secretArr = secret.split('');
   const guessArr = guess.split('');
-  const secretUsed = new Array(4).fill(false);
+    const secretUsed = new Array(4).fill(false);
 
-  for (let i = 0; i < 4; i++) {
-    for (let j = 0; j < 4; j++) {
-      if (!secretUsed[j] && guessArr[i] === secretArr[j]) {
-        correctNumbers++;
-        secretUsed[j] = true;
-        break;
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 4; j++) {
+        if (!secretUsed[j] && guessArr[i] === secretArr[j]) {
+          correctNumbers++;
+          secretUsed[j] = true;
+          break;
+        }
       }
     }
-  }
 
-  for (let i = 0; i < 4; i++) {
-    if (guessArr[i] === secretArr[i]) {
-      correctPositions++;
+    for (let i = 0; i < 4; i++) {
+      if (guessArr[i] === secretArr[i]) {
+        correctPositions++;
+      }
     }
-  }
 
-  return { correctNumbers, correctPositions };
-};
+    return { correctNumbers, correctPositions };
+  };
 
 export default function App() {
   const [secretNumber, setSecretNumber] = useState(() => generateNewGame());
@@ -49,6 +49,7 @@ export default function App() {
   const [gameWon, setGameWon] = useState(false);
   const [gameLost, setGameLost] = useState(false);
   const [message, setMessage] = useState('');
+  const [unlimitedMode, setUnlimitedMode] = useState(false);
 
   const handleSubmitGuess = () => {
     if (currentGuess.length !== 4) {
@@ -82,7 +83,7 @@ export default function App() {
 
     if (feedback.correctPositions === 4) {
       setGameWon(true);
-    } else if (updatedGuesses.length === 6) {
+    } else if (!unlimitedMode && updatedGuesses.length === 6) {
       setGameLost(true);
     }
 
@@ -96,6 +97,11 @@ export default function App() {
     setGuessHistory([]);
     setGameWon(false);
     setGameLost(false);
+    setMessage('');
+  };
+
+  const toggleUnlimitedMode = () => {
+    setUnlimitedMode(!unlimitedMode);
     setMessage('');
   };
 
@@ -155,6 +161,18 @@ export default function App() {
                 </p>
               </div>
               <div className="flex gap-2">
+                <Button 
+                  onClick={toggleUnlimitedMode}
+                  size="icon"
+                  variant="outline"
+                  className={`border-2 rounded-full ${
+                    unlimitedMode 
+                      ? 'border-green-600 bg-green-50 text-green-900' 
+                      : 'border-blue-900 hover:bg-blue-50 text-blue-900'
+                  }`}
+                >
+                  <span className="text-lg font-bold" style={{ fontFamily: 'Caveat, cursive' }}>S</span>
+                </Button>
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button 
@@ -318,8 +336,8 @@ export default function App() {
                 <p className="text-lg md:text-base text-red-600" style={{ fontFamily: 'Caveat, cursive' }}>
                   {message}
                 </p>
-              </div>
-            )}
+            </div>
+          )}
 
             {/* Game Lost Message */}
             {gameLost && (
@@ -329,6 +347,13 @@ export default function App() {
                 </p>
               </div>
             )}
+
+            {/* Mode Indicator */}
+            <div className="text-center mb-2">
+              <p className="text-sm md:text-xs text-slate-500" style={{ fontFamily: 'Caveat, cursive' }}>
+                {unlimitedMode ? 'Unlimited Mode' : '6 Guesses Limit'}
+              </p>
+            </div>
 
             <div className="flex gap-2 items-center justify-center">
               <Input
