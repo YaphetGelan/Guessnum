@@ -382,55 +382,58 @@ export default function App() {
             </AnimatePresence>
           </div>
 
-          {/* Table Section - Always visible, scrollable */}
-          <div className="flex-1 overflow-y-auto px-4 md:pl-14 pb-2">
-            <h2 className="text-2xl md:text-2xl text-blue-900 mb-2 underline sticky top-0 bg-[#fffef7] py-1" style={{ fontFamily: 'Caveat, cursive' }}>
+          {/* Table Section - Always visible, compact */}
+          <div className="flex-1 px-4 md:pl-14 pb-2">
+            <h2 className="text-lg md:text-xl text-blue-900 mb-1 underline" style={{ fontFamily: 'Caveat, cursive' }}>
               {gameMode === 'single' ? 'My Guesses:' : `Player ${currentPlayer}'s Turn:`}
             </h2>
             
             {/* Hand-drawn table */}
             <div className="relative">
               {/* Table Header Row */}
-              <div className="grid grid-cols-[2fr_1fr_1fr] gap-1 mb-1 pb-1 border-b-2 border-blue-900 sticky top-8 bg-[#fffef7]">
-                <div className="text-lg md:text-xl text-blue-900" style={{ fontFamily: 'Caveat, cursive' }}>
+              <div className="grid grid-cols-[2fr_1fr_1fr] gap-1 mb-1 pb-1 border-b-2 border-blue-900">
+                <div className="text-sm md:text-lg text-blue-900" style={{ fontFamily: 'Caveat, cursive' }}>
                   Guess
                 </div>
-                <div className="text-lg md:text-xl text-blue-900 text-center" style={{ fontFamily: 'Caveat, cursive' }}>
+                <div className="text-sm md:text-lg text-blue-900 text-center" style={{ fontFamily: 'Caveat, cursive' }}>
                   No:
                 </div>
-                <div className="text-lg md:text-xl text-blue-900 text-center" style={{ fontFamily: 'Caveat, cursive' }}>
+                <div className="text-sm md:text-lg text-blue-900 text-center" style={{ fontFamily: 'Caveat, cursive' }}>
                   Pos
                 </div>
               </div>
 
-              {/* Table Body */}
-              <div className="space-y-3">
+              {/* Table Body - Show last 5 guesses */}
+              <div className="space-y-1">
                 {(() => {
                   const currentGuesses = gameMode === 'single' ? guessHistory : 
                     (currentPlayer === 1 ? player1Guesses : player2Guesses);
                   
                   if (currentGuesses.length === 0) {
                     return (
-                      <div className="py-8 text-center text-lg md:text-xl text-slate-400 italic" style={{ fontFamily: 'Caveat, cursive' }}>
+                      <div className="py-4 text-center text-sm md:text-lg text-slate-400 italic" style={{ fontFamily: 'Caveat, cursive' }}>
                         (no guesses yet...)
                       </div>
                     );
                   }
                   
-                  return currentGuesses.map((result, index) => (
+                  // Show only the last 5 guesses
+                  const recentGuesses = currentGuesses.slice(-5);
+                  
+                  return recentGuesses.map((result, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="grid grid-cols-[2fr_1fr_1fr] gap-1 py-1 border-b border-slate-300"
+                      className="grid grid-cols-[2fr_1fr_1fr] gap-1 py-1 border-b border-slate-200"
                     >
                       {/* Guess */}
-                      <div className="flex gap-1">
+                      <div className="flex gap-0.5">
                         {result.guess.split('').map((digit, i) => (
                           <div 
                             key={i}
-                            className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center border-2 border-blue-900 bg-white rounded-sm text-xl md:text-2xl text-blue-900"
+                            className="w-6 h-6 md:w-8 md:h-8 flex items-center justify-center border border-blue-900 bg-white rounded text-sm md:text-lg text-blue-900"
                             style={{ fontFamily: 'Caveat, cursive' }}
                           >
                             {digit}
@@ -441,10 +444,10 @@ export default function App() {
                       {/* No: (correct numbers wrong position) */}
                       <div className="flex items-center justify-center">
                         <div 
-                          className={`w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full text-lg md:text-xl ${
+                          className={`w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded-full text-sm md:text-lg ${
                             result.correctNumbers > 0 
-                              ? 'bg-orange-200 border-2 border-orange-600 text-orange-900' 
-                              : 'bg-slate-100 border-2 border-slate-400 text-slate-500'
+                              ? 'bg-orange-200 border border-orange-600 text-orange-900' 
+                              : 'bg-slate-100 border border-slate-400 text-slate-500'
                           }`}
                           style={{ fontFamily: 'Caveat, cursive' }}
                         >
@@ -455,10 +458,10 @@ export default function App() {
                       {/* Pos (correct position) */}
                       <div className="flex items-center justify-center">
                         <div 
-                          className={`w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full text-lg md:text-xl ${
+                          className={`w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded-full text-sm md:text-lg ${
                             result.correctPositions > 0 
-                              ? 'bg-green-200 border-2 border-green-600 text-green-900' 
-                              : 'bg-slate-100 border-2 border-slate-400 text-slate-500'
+                              ? 'bg-green-200 border border-green-600 text-green-900' 
+                              : 'bg-slate-100 border border-slate-400 text-slate-500'
                           }`}
                           style={{ fontFamily: 'Caveat, cursive' }}
                         >
@@ -475,13 +478,13 @@ export default function App() {
           {/* Input Area - Fixed at Bottom */}
           <div className="flex-shrink-0 border-t-2 border-blue-900 bg-[#fffef7] p-3 md:pl-14">
             {/* Message Display */}
-            {message && (
+              {message && (
               <div className="text-center mb-2">
                 <p className="text-sm md:text-base text-red-600" style={{ fontFamily: 'Caveat, cursive' }}>
                   {message}
                 </p>
-              </div>
-            )}
+            </div>
+          )}
 
             {/* Game Lost Message */}
             {gameLost && (
@@ -493,39 +496,39 @@ export default function App() {
             )}
 
             {/* Current Guess Display */}
-            <div className="flex justify-center items-center gap-2 mb-3">
+            <div className="flex justify-center items-center gap-1 mb-2">
               {[0, 1, 2, 3].map((i) => (
                 <div 
                   key={i}
-                  className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center border-2 border-blue-900 bg-white rounded-sm text-2xl md:text-3xl text-blue-900"
+                  className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center border-2 border-blue-900 bg-white rounded-sm text-lg md:text-xl text-blue-900"
                   style={{ fontFamily: 'Caveat, cursive' }}
                 >
                   {currentGuess[i] || '?'}
                 </div>
               ))}
-            </div>
+          </div>
 
-            {/* Mobile Numpad */}
+            {/* Mobile Numpad - Compact */}
             <div className="md:hidden">
-              <div className="grid grid-cols-3 gap-2 mb-2">
+              <div className="grid grid-cols-3 gap-1 mb-1">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                   <Button
                     key={num}
                     onClick={() => handleNumpadClick(num.toString())}
                     disabled={gameWon || gameLost || player1Won || player2Won}
-                    className="h-12 text-2xl bg-blue-100 hover:bg-blue-200 text-blue-900 border-2 border-blue-900"
+                    className="h-8 text-sm bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-900"
                     style={{ fontFamily: 'Caveat, cursive' }}
                   >
                     {num}
                   </Button>
                 ))}
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-1">
                 <Button
                   onClick={handleClear}
                   disabled={gameWon || gameLost || player1Won || player2Won}
                   variant="outline"
-                  className="h-12 text-lg border-2 border-red-600 text-red-600 hover:bg-red-50"
+                  className="h-8 text-xs border border-red-600 text-red-600 hover:bg-red-50"
                   style={{ fontFamily: 'Caveat, cursive' }}
                 >
                   Clear
@@ -534,7 +537,7 @@ export default function App() {
                   onClick={handleBackspace}
                   disabled={gameWon || gameLost || player1Won || player2Won}
                   variant="outline"
-                  className="h-12 text-lg border-2 border-orange-600 text-orange-600 hover:bg-orange-50"
+                  className="h-8 text-xs border border-orange-600 text-orange-600 hover:bg-orange-50"
                   style={{ fontFamily: 'Caveat, cursive' }}
                 >
                   ←
@@ -542,7 +545,7 @@ export default function App() {
                 <Button 
                   onClick={handleSubmitGuess} 
                   disabled={gameWon || gameLost || player1Won || player2Won || currentGuess.length !== 4}
-                  className="h-12 text-lg bg-green-600 hover:bg-green-700 text-white"
+                  className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
                   style={{ fontFamily: 'Caveat, cursive' }}
                 >
                   Check
@@ -560,13 +563,13 @@ export default function App() {
                 onKeyPress={handleKeyPress}
                 disabled={gameWon || gameLost || player1Won || player2Won}
                 maxLength={4}
-                className="w-32 text-center tracking-[0.5em] border-2 border-blue-900 bg-white text-2xl h-12"
+                className="w-28 text-center tracking-[0.5em] border-2 border-blue-900 bg-white text-lg h-10"
                 style={{ fontFamily: 'Caveat, cursive' }}
               />
               <Button 
                 onClick={handleSubmitGuess} 
                 disabled={gameWon || gameLost || player1Won || player2Won || currentGuess.length !== 4}
-                className="bg-blue-900 hover:bg-blue-800 text-lg px-6 h-12"
+                className="bg-blue-900 hover:bg-blue-800 text-sm px-4 h-10"
                 style={{ fontFamily: 'Caveat, cursive' }}
               >
                 Check
