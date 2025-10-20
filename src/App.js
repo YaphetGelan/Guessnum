@@ -5,73 +5,98 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { RefreshCw, Star, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-function generateSecretNumber() {
-  const digits = [];
-  while (digits.length < 4) {
-    const digit = Math.floor(Math.random() * 10).toString();
-    if (!digits.includes(digit)) {
-      digits.push(digit);
+const generateNewGame = () => {
+  let num = '';
+  const digits = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  for (let i = 0; i < 4; i++) {
+    const randIdx = Math.floor(Math.random() * digits.length);
+    num += digits[randIdx];
+    digits.splice(randIdx, 1);
+  }
+  return num;
+};
+
+const calculateFeedback = (guess, secret) => {
+  let correctPositions = 0;
+  let correctNumbers = 0;
+  const secretArr = secret.split('');
+  const guessArr = guess.split('');
+  const secretUsed = new Array(4).fill(false);
+
+  for (let i = 0; i < 4; i++) {
+    for (let j = 0; j < 4; j++) {
+      if (!secretUsed[j] && guessArr[i] === secretArr[j]) {
+        correctNumbers++;
+        secretUsed[j] = true;
+        break;
+      }
     }
   }
-  return digits.join('');
-}
 
-function checkGuess(secret, guess) {
-    let correctPositions = 0;
-    let correctNumbers = 0;
-
-    for (let i = 0; i < 4; i++) {
-    if (guess[i] === secret[i]) {
+  for (let i = 0; i < 4; i++) {
+    if (guessArr[i] === secretArr[i]) {
       correctPositions++;
-      }
     }
+  }
 
-    for (let i = 0; i < 4; i++) {
-    if (secret.includes(guess[i]) && guess[i] !== secret[i]) {
-      correctNumbers++;
-      }
-    }
-
-    return { correctNumbers, correctPositions };
-}
+  return { correctNumbers, correctPositions };
+};
 
 export default function App() {
-  const [secretNumber, setSecretNumber] = useState(() => generateSecretNumber());
+  const [secretNumber, setSecretNumber] = useState(() => generateNewGame());
   const [currentGuess, setCurrentGuess] = useState('');
   const [guessHistory, setGuessHistory] = useState([]);
   const [gameWon, setGameWon] = useState(false);
+  const [gameLost, setGameLost] = useState(false);
+  const [message, setMessage] = useState('');
 
   const handleSubmitGuess = () => {
-    if (currentGuess.length !== 4 || !/^\d+$/.test(currentGuess)) {
+    if (currentGuess.length !== 4) {
+      setMessage('Please enter 4 digits');
       return;
     }
 
+    // Check for duplicates
     const hasDuplicates = new Set(currentGuess).size !== 4;
     if (hasDuplicates) {
+      setMessage('All digits must be different');
       return;
     }
 
-    const result = checkGuess(secretNumber, currentGuess);
+    // Check for 0
+    if (currentGuess.includes('0')) {
+      setMessage('Digit 0 is not allowed');
+      return;
+    }
+
+    const feedback = calculateFeedback(currentGuess, secretNumber);
+
     const newGuess = {
       guess: currentGuess,
-      correctNumbers: result.correctNumbers,
-      correctPositions: result.correctPositions,
+      correctNumbers: feedback.correctNumbers,
+      correctPositions: feedback.correctPositions,
     };
 
-    setGuessHistory([...guessHistory, newGuess]);
-    
-    if (result.correctPositions === 4) {
+    const updatedGuesses = [...guessHistory, newGuess];
+    setGuessHistory(updatedGuesses);
+
+    if (feedback.correctPositions === 4) {
       setGameWon(true);
+    } else if (updatedGuesses.length === 6) {
+      setGameLost(true);
     }
 
     setCurrentGuess('');
+    setMessage('');
   };
 
   const handleReset = () => {
-    setSecretNumber(generateSecretNumber());
+    setSecretNumber(generateNewGame());
     setCurrentGuess('');
     setGuessHistory([]);
     setGameWon(false);
+    setGameLost(false);
+    setMessage('');
   };
 
   const handleKeyPress = (e) => {
@@ -287,21 +312,39 @@ export default function App() {
             <p className="text-2xl md:text-xl text-blue-900 mb-3 text-center" style={{ fontFamily: 'Caveat, cursive' }}>
               Your guess:
             </p>
+            {/* Message Display */}
+            {message && (
+              <div className="text-center mb-3">
+                <p className="text-lg md:text-base text-red-600" style={{ fontFamily: 'Caveat, cursive' }}>
+                  {message}
+                </p>
+              </div>
+            )}
+
+            {/* Game Lost Message */}
+            {gameLost && (
+              <div className="text-center mb-3">
+                <p className="text-lg md:text-base text-red-600" style={{ fontFamily: 'Caveat, cursive' }}>
+                  Game Over! The secret number was {secretNumber}
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-2 items-center justify-center">
               <Input
                 type="text"
                 placeholder="????"
                 value={currentGuess}
-                onChange={(e) => setCurrentGuess(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onChange={(e) => setCurrentGuess(e.target.value.replace(/[^1-9]/g, '').slice(0, 4))}
                 onKeyPress={handleKeyPress}
-                disabled={gameWon}
+                disabled={gameWon || gameLost}
                 maxLength={4}
                 className="w-36 md:w-32 text-center tracking-[0.5em] border-2 border-blue-900 bg-white text-3xl md:text-2xl h-14 md:h-12"
                 style={{ fontFamily: 'Caveat, cursive' }}
               />
               <Button 
                 onClick={handleSubmitGuess} 
-                disabled={gameWon || currentGuess.length !== 4}
+                disabled={gameWon || gameLost || currentGuess.length !== 4}
                 className="bg-blue-900 hover:bg-blue-800 text-xl md:text-lg px-8 md:px-6 h-14 md:h-12"
                 style={{ fontFamily: 'Caveat, cursive' }}
               >
