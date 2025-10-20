@@ -85,12 +85,13 @@ const DailyGame = ({ onBackToSingle, userId }) => {
 
         if (data.won) {
           setGameWon(true);
+          setHasPlayedToday(true);
         } else if (!unlimitedMode && guessHistory.length >= 5) {
           setGameLost(true);
+          setHasPlayedToday(true);
         }
 
         setUserStats(data.stats);
-        setHasPlayedToday(true);
         setCurrentGuess('');
         setMessage('');
       } else {

@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
+const Database = require('./database');
 
 const app = express();
 const server = http.createServer(app);
@@ -15,126 +16,155 @@ const io = socketIo(server, {
 app.use(cors());
 app.use(express.json());
 
+// Initialize database
+const db = new Database();
+
+// Initialize database on startup
+db.init().catch(console.error);
+
 // API Routes
-app.get('/api/daily-game/:includeZero', (req, res) => {
-  const includeZero = req.params.includeZero === 'true';
-  const dailyGame = getTodaysDailyGame(includeZero);
-  
-  res.json({
-    date: dailyGame.date,
-    includeZero: dailyGame.includeZero,
-    // Don't send the secret to the client
-    playerCount: dailyGame.players.size
-  });
+app.get('/api/daily-game/:includeZero', async (req, res) => {
+  try {
+    const includeZero = req.params.includeZero === 'true';
+    const today = getTodayString();
+    const mode = includeZero ? 'with0' : 'no0';
+    
+    // Get or create today's daily game
+    let dailyGame = await db.getDailyGame(today, mode);
+    if (!dailyGame) {
+      const secret = generateDailySecret(includeZero);
+      await db.createDailyGame(today, mode, secret);
+      dailyGame = { date: today, mode, secret };
+    }
+    
+    // Get player count
+    const playerCount = await db.getDailyGamePlayerCount(today, mode);
+    
+    res.json({
+      date: dailyGame.date,
+      includeZero: dailyGame.mode === 'with0',
+      playerCount: playerCount
+    });
+  } catch (error) {
+    console.error('Error fetching daily game:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-app.post('/api/daily-game/submit', (req, res) => {
-  const { userId, guess, includeZero } = req.body;
-  const dailyGame = getTodaysDailyGame(includeZero);
-  
-  // Validate guess
-  if (guess.length !== 4) {
-    return res.status(400).json({ error: 'Please enter 4 digits' });
-  }
-  
-  const hasDuplicates = new Set(guess).size !== 4;
-  if (hasDuplicates) {
-    return res.status(400).json({ error: 'All digits must be different' });
-  }
-  
-  if (!includeZero && guess.includes('0')) {
-    return res.status(400).json({ error: 'Digit 0 is not allowed in this mode' });
-  }
-  
-  // Check if user already played today
-  if (dailyGame.players.has(userId)) {
-    return res.status(400).json({ error: 'You already played today\'s game' });
-  }
-  
-  // Calculate feedback
-  const feedback = calculateFeedback(guess, dailyGame.secret);
-  
-  // Store player's attempt
-  const playerData = {
-    userId,
-    guess,
-    correctNumbers: feedback.correctNumbers,
-    correctPositions: feedback.correctPositions,
-    won: feedback.correctPositions === 4,
-    submittedAt: Date.now()
-  };
-  
-  dailyGame.players.set(userId, playerData);
-  
-  // Update user stats
-  if (!userStats.has(userId)) {
-    userStats.set(userId, {
-      totalGames: 0,
-      wins: 0,
-      losses: 0,
-      currentStreak: 0,
-      longestStreak: 0,
-      lastPlayedDate: null
+app.post('/api/daily-game/submit', async (req, res) => {
+  try {
+    const { userId, guess, includeZero } = req.body;
+    const today = getTodayString();
+    const mode = includeZero ? 'with0' : 'no0';
+    
+    // Validate guess
+    if (guess.length !== 4) {
+      return res.status(400).json({ error: 'Please enter 4 digits' });
+    }
+    
+    const hasDuplicates = new Set(guess).size !== 4;
+    if (hasDuplicates) {
+      return res.status(400).json({ error: 'All digits must be different' });
+    }
+    
+    if (!includeZero && guess.includes('0')) {
+      return res.status(400).json({ error: 'Digit 0 is not allowed in this mode' });
+    }
+    
+    // Get today's daily game
+    let dailyGame = await db.getDailyGame(today, mode);
+    if (!dailyGame) {
+      const secret = generateDailySecret(includeZero);
+      await db.createDailyGame(today, mode, secret);
+      dailyGame = { date: today, mode, secret };
+    }
+    
+    // Check if user already completed today's game
+    const hasCompleted = await db.hasCompletedDailyGame(userId, today, mode);
+    if (hasCompleted) {
+      return res.status(400).json({ error: 'You already completed today\'s game' });
+    }
+    
+    // Calculate feedback
+    const feedback = calculateFeedback(guess, dailyGame.secret);
+    const won = feedback.correctPositions === 4;
+    
+    // Store the attempt
+    await db.addDailyAttempt(userId, today, mode, guess, feedback.correctNumbers, feedback.correctPositions, won);
+    
+    // Get or create user
+    await db.createUser(userId, 'Anonymous User'); // We'll get the real name from frontend later
+    
+    // Get current stats
+    let stats = await db.getUserStats(userId);
+    const lastPlayed = stats.last_played_date;
+    
+    // Update streak logic
+    if (lastPlayed === today) {
+      // Already played today, don't update streak
+    } else if (lastPlayed === getYesterdayString()) {
+      // Played yesterday, continue streak
+      stats.current_streak++;
+    } else if (lastPlayed && lastPlayed !== today) {
+      // Missed a day, reset streak
+      stats.current_streak = 1;
+    } else {
+      // First time playing
+      stats.current_streak = 1;
+    }
+    
+    // Update stats
+    stats.total_games++;
+    stats.last_played_date = today;
+    
+    if (won) {
+      stats.wins++;
+    } else {
+      // Check if this was the 6th guess (loss)
+      const attempts = await db.getDailyAttempts(userId, today, mode);
+      if (attempts.length >= 6) {
+        stats.losses++;
+      }
+    }
+    
+    stats.longest_streak = Math.max(stats.longest_streak, stats.current_streak);
+    
+    // Save updated stats
+    await db.updateUserStats(userId, stats);
+    
+    res.json({
+      feedback,
+      won: won,
+      stats: {
+        totalGames: stats.total_games,
+        wins: stats.wins,
+        losses: stats.losses,
+        currentStreak: stats.current_streak,
+        longestStreak: stats.longest_streak
+      }
     });
+  } catch (error) {
+    console.error('Error submitting daily game:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
-  
-  const stats = userStats.get(userId);
-  const today = getTodayString();
-  const lastPlayed = stats.lastPlayedDate;
-  
-  // Update streak logic
-  if (lastPlayed === today) {
-    // Already played today, don't update streak
-  } else if (lastPlayed === getYesterdayString()) {
-    // Played yesterday, continue streak
-    stats.currentStreak++;
-  } else if (lastPlayed && lastPlayed !== today) {
-    // Missed a day, reset streak
-    stats.currentStreak = 1;
-  } else {
-    // First time playing
-    stats.currentStreak = 1;
-  }
-  
-  stats.totalGames++;
-  stats.lastPlayedDate = today;
-  
-  if (playerData.won) {
-    stats.wins++;
-  } else {
-    stats.losses++;
-  }
-  
-  stats.longestStreak = Math.max(stats.longestStreak, stats.currentStreak);
-  
-  res.json({
-    feedback,
-    won: playerData.won,
-    stats: {
-      totalGames: stats.totalGames,
+});
+
+app.get('/api/user-stats/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const stats = await db.getUserStats(userId);
+    
+    res.json({
+      totalGames: stats.total_games,
       wins: stats.wins,
       losses: stats.losses,
-      currentStreak: stats.currentStreak,
-      longestStreak: stats.longestStreak
-    }
-  });
-});
-
-app.get('/api/user-stats/:userId', (req, res) => {
-  const { userId } = req.params;
-  const stats = userStats.get(userId);
-  
-  if (!stats) {
-    return res.json({
-      totalGames: 0,
-      wins: 0,
-      losses: 0,
-      currentStreak: 0,
-      longestStreak: 0
+      currentStreak: stats.current_streak,
+      longestStreak: stats.longest_streak
     });
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
-  
-  res.json(stats);
 });
 
 function getYesterdayString() {
@@ -143,13 +173,9 @@ function getYesterdayString() {
   return yesterday.toISOString().split('T')[0];
 }
 
-// Game state storage
+// Game state storage (for multiplayer)
 const games = new Map();
 const players = new Map();
-
-// Daily game storage
-const dailyGames = new Map();
-const userStats = new Map();
 
 // Get today's date as string (YYYY-MM-DD)
 function getTodayString() {
@@ -168,23 +194,6 @@ function generateDailySecret(includeZero = false) {
   return num;
 }
 
-// Get or create today's daily game
-function getTodaysDailyGame(includeZero = false) {
-  const today = getTodayString();
-  const gameKey = `${today}-${includeZero ? 'with0' : 'no0'}`;
-  
-  if (!dailyGames.has(gameKey)) {
-    dailyGames.set(gameKey, {
-      date: today,
-      secret: generateDailySecret(includeZero),
-      includeZero,
-      players: new Map(),
-      createdAt: Date.now()
-    });
-  }
-  
-  return dailyGames.get(gameKey);
-}
 
 // Generate secret number (1-9, no duplicates, no 0)
 function generateSecretNumber() {
@@ -442,4 +451,17 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('Shutting down server...');
+  db.close();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('Shutting down server...');
+  db.close();
+  process.exit(0);
 });
