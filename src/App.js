@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
-import { RefreshCw, Star, HelpCircle } from 'lucide-react';
+import { RefreshCw, Star, HelpCircle, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import MultiplayerGame from './components/MultiplayerGame';
 
   const generateNewGame = () => {
   let num = '';
@@ -50,6 +51,15 @@ export default function App() {
   const [gameLost, setGameLost] = useState(false);
   const [message, setMessage] = useState('');
   const [unlimitedMode, setUnlimitedMode] = useState(false);
+  const [gameMode, setGameMode] = useState('single'); // 'single' or 'multiplayer'
+  const [player1Secret, setPlayer1Secret] = useState('');
+  const [player2Secret, setPlayer2Secret] = useState('');
+  const [currentPlayer, setCurrentPlayer] = useState(1);
+  const [player1Guesses, setPlayer1Guesses] = useState([]);
+  const [player2Guesses, setPlayer2Guesses] = useState([]);
+  const [player1Won, setPlayer1Won] = useState(false);
+  const [player2Won, setPlayer2Won] = useState(false);
+  const [showMultiplayer, setShowMultiplayer] = useState(false);
 
   const handleSubmitGuess = () => {
     if (currentGuess.length !== 4) {
@@ -70,21 +80,56 @@ export default function App() {
       return;
     }
 
+    if (gameMode === 'single') {
     const feedback = calculateFeedback(currentGuess, secretNumber);
 
     const newGuess = {
-      guess: currentGuess,
-      correctNumbers: feedback.correctNumbers,
-      correctPositions: feedback.correctPositions,
-    };
+        guess: currentGuess,
+        correctNumbers: feedback.correctNumbers,
+        correctPositions: feedback.correctPositions,
+      };
 
-    const updatedGuesses = [...guessHistory, newGuess];
-    setGuessHistory(updatedGuesses);
+      const updatedGuesses = [...guessHistory, newGuess];
+      setGuessHistory(updatedGuesses);
 
     if (feedback.correctPositions === 4) {
       setGameWon(true);
-    } else if (!unlimitedMode && updatedGuesses.length === 6) {
+      } else if (!unlimitedMode && updatedGuesses.length === 6) {
       setGameLost(true);
+      }
+    } else {
+      // Multiplayer mode
+      const targetSecret = currentPlayer === 1 ? player2Secret : player1Secret;
+      const feedback = calculateFeedback(currentGuess, targetSecret);
+
+      const newGuess = {
+        guess: currentGuess,
+        correctNumbers: feedback.correctNumbers,
+        correctPositions: feedback.correctPositions,
+      };
+
+      if (currentPlayer === 1) {
+        const updatedGuesses = [...player1Guesses, newGuess];
+        setPlayer1Guesses(updatedGuesses);
+        if (feedback.correctPositions === 4) {
+          setPlayer1Won(true);
+        } else if (!unlimitedMode && updatedGuesses.length === 6) {
+          setMessage('Player 1 lost! Player 2 wins!');
+        }
+      } else {
+        const updatedGuesses = [...player2Guesses, newGuess];
+        setPlayer2Guesses(updatedGuesses);
+        if (feedback.correctPositions === 4) {
+          setPlayer2Won(true);
+        } else if (!unlimitedMode && updatedGuesses.length === 6) {
+          setMessage('Player 2 lost! Player 1 wins!');
+        }
+      }
+
+      // Switch players if no one won
+      if (feedback.correctPositions !== 4) {
+        setCurrentPlayer(currentPlayer === 1 ? 2 : 1);
+      }
     }
 
     setCurrentGuess('');
@@ -92,11 +137,23 @@ export default function App() {
   };
 
   const handleReset = () => {
-    setSecretNumber(generateNewGame());
-    setCurrentGuess('');
-    setGuessHistory([]);
-    setGameWon(false);
-    setGameLost(false);
+    if (gameMode === 'single') {
+      setSecretNumber(generateNewGame());
+      setCurrentGuess('');
+      setGuessHistory([]);
+      setGameWon(false);
+      setGameLost(false);
+    } else {
+      // Reset multiplayer game
+      setPlayer1Secret('');
+      setPlayer2Secret('');
+      setCurrentPlayer(1);
+      setPlayer1Guesses([]);
+      setPlayer2Guesses([]);
+      setPlayer1Won(false);
+      setPlayer2Won(false);
+      setCurrentGuess('');
+    }
     setMessage('');
   };
 
@@ -105,10 +162,51 @@ export default function App() {
     setMessage('');
   };
 
+  const startMultiplayerGame = () => {
+    setGameMode('multiplayer');
+    setPlayer1Secret(generateNewGame());
+    setPlayer2Secret(generateNewGame());
+    setCurrentPlayer(1);
+    setPlayer1Guesses([]);
+    setPlayer2Guesses([]);
+    setPlayer1Won(false);
+    setPlayer2Won(false);
+    setCurrentGuess('');
+    setMessage('');
+  };
+
+  const startSingleGame = () => {
+    setGameMode('single');
+    setSecretNumber(generateNewGame());
+    setCurrentGuess('');
+    setGuessHistory([]);
+    setGameWon(false);
+    setGameLost(false);
+    setMessage('');
+  };
+
+  if (showMultiplayer) {
+    return <MultiplayerGame onBackToSingle={() => setShowMultiplayer(false)} />;
+  }
+
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !gameWon) {
+    if (e.key === 'Enter' && !gameWon && !gameLost && !player1Won && !player2Won) {
       handleSubmitGuess();
     }
+  };
+
+  const handleNumpadClick = (num) => {
+    if (currentGuess.length < 4 && !gameWon && !gameLost && !player1Won && !player2Won) {
+      setCurrentGuess(currentGuess + num);
+    }
+  };
+
+  const handleBackspace = () => {
+    setCurrentGuess(currentGuess.slice(0, -1));
+  };
+
+  const handleClear = () => {
+    setCurrentGuess('');
   };
 
   return (
@@ -161,6 +259,14 @@ export default function App() {
                 </p>
               </div>
               <div className="flex gap-2">
+                <Button 
+                  onClick={() => setShowMultiplayer(true)}
+                  size="icon"
+                  variant="outline"
+                  className="border-2 border-purple-600 hover:bg-purple-50 text-purple-900 rounded-full"
+                >
+                  <Users className="w-5 h-5" />
+                </Button>
                 <Button 
                   onClick={toggleUnlimitedMode}
                   size="icon"
@@ -239,62 +345,103 @@ export default function App() {
                   </div>
                 </motion.div>
               )}
+              {player1Won && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="mb-3 p-3 border-4 border-green-600 bg-green-50 rounded-sm"
+                  style={{ fontFamily: 'Caveat, cursive' }}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Star className="w-6 h-6 text-yellow-500 fill-yellow-400" />
+                    <p className="text-2xl text-green-700">
+                      Player 1 Wins!
+                    </p>
+                    <Star className="w-6 h-6 text-yellow-500 fill-yellow-400" />
+            </div>
+                </motion.div>
+              )}
+              {player2Won && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="mb-3 p-3 border-4 border-green-600 bg-green-50 rounded-sm"
+                  style={{ fontFamily: 'Caveat, cursive' }}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Star className="w-6 h-6 text-yellow-500 fill-yellow-400" />
+                    <p className="text-2xl text-green-700">
+                      Player 2 Wins!
+                    </p>
+                    <Star className="w-6 h-6 text-yellow-500 fill-yellow-400" />
+                  </div>
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
 
-          {/* Table Section - Scrollable */}
-          <div className="flex-1 overflow-y-auto px-4 md:pl-14 pb-4">
-            <h2 className="text-3xl md:text-2xl text-blue-900 mb-3 underline sticky top-0 bg-[#fffef7] py-2" style={{ fontFamily: 'Caveat, cursive' }}>
-              My Guesses:
+          {/* Table Section - Always visible, scrollable */}
+          <div className="flex-1 overflow-y-auto px-4 md:pl-14 pb-2">
+            <h2 className="text-2xl md:text-2xl text-blue-900 mb-2 underline sticky top-0 bg-[#fffef7] py-1" style={{ fontFamily: 'Caveat, cursive' }}>
+              {gameMode === 'single' ? 'My Guesses:' : `Player ${currentPlayer}'s Turn:`}
             </h2>
             
             {/* Hand-drawn table */}
             <div className="relative">
               {/* Table Header Row */}
-              <div className="grid grid-cols-[2fr_1fr_1fr] gap-2 mb-2 pb-2 border-b-2 border-blue-900 sticky top-14 bg-[#fffef7]">
-                <div className="text-2xl md:text-xl text-blue-900" style={{ fontFamily: 'Caveat, cursive' }}>
+              <div className="grid grid-cols-[2fr_1fr_1fr] gap-1 mb-1 pb-1 border-b-2 border-blue-900 sticky top-8 bg-[#fffef7]">
+                <div className="text-lg md:text-xl text-blue-900" style={{ fontFamily: 'Caveat, cursive' }}>
                   Guess
                 </div>
-                <div className="text-2xl md:text-xl text-blue-900 text-center" style={{ fontFamily: 'Caveat, cursive' }}>
+                <div className="text-lg md:text-xl text-blue-900 text-center" style={{ fontFamily: 'Caveat, cursive' }}>
                   No:
                 </div>
-                <div className="text-2xl md:text-xl text-blue-900 text-center" style={{ fontFamily: 'Caveat, cursive' }}>
+                <div className="text-lg md:text-xl text-blue-900 text-center" style={{ fontFamily: 'Caveat, cursive' }}>
                   Pos
                 </div>
-            </div>
+              </div>
 
               {/* Table Body */}
               <div className="space-y-3">
-                {guessHistory.length === 0 ? (
-                  <div className="py-12 text-center text-2xl md:text-xl text-slate-400 italic" style={{ fontFamily: 'Caveat, cursive' }}>
-                    (no guesses yet...)
-                  </div>
-                ) : (
-                  guessHistory.map((result, index) => (
+                {(() => {
+                  const currentGuesses = gameMode === 'single' ? guessHistory : 
+                    (currentPlayer === 1 ? player1Guesses : player2Guesses);
+                  
+                  if (currentGuesses.length === 0) {
+                    return (
+                      <div className="py-8 text-center text-lg md:text-xl text-slate-400 italic" style={{ fontFamily: 'Caveat, cursive' }}>
+                        (no guesses yet...)
+                      </div>
+                    );
+                  }
+                  
+                  return currentGuesses.map((result, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="grid grid-cols-[2fr_1fr_1fr] gap-2 py-2 border-b border-slate-300"
+                      className="grid grid-cols-[2fr_1fr_1fr] gap-1 py-1 border-b border-slate-300"
                     >
                       {/* Guess */}
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1">
                         {result.guess.split('').map((digit, i) => (
                           <div 
                             key={i}
-                            className="w-12 h-12 md:w-10 md:h-10 flex items-center justify-center border-2 border-blue-900 bg-white rounded-sm text-3xl md:text-2xl text-blue-900"
+                            className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center border-2 border-blue-900 bg-white rounded-sm text-xl md:text-2xl text-blue-900"
                             style={{ fontFamily: 'Caveat, cursive' }}
                           >
                             {digit}
                           </div>
                         ))}
-          </div>
+                      </div>
 
                       {/* No: (correct numbers wrong position) */}
                       <div className="flex items-center justify-center">
                         <div 
-                          className={`w-12 h-12 md:w-10 md:h-10 flex items-center justify-center rounded-full text-2xl md:text-xl ${
+                          className={`w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full text-lg md:text-xl ${
                             result.correctNumbers > 0 
                               ? 'bg-orange-200 border-2 border-orange-600 text-orange-900' 
                               : 'bg-slate-100 border-2 border-slate-400 text-slate-500'
@@ -308,7 +455,7 @@ export default function App() {
                       {/* Pos (correct position) */}
                       <div className="flex items-center justify-center">
                         <div 
-                          className={`w-12 h-12 md:w-10 md:h-10 flex items-center justify-center rounded-full text-2xl md:text-xl ${
+                          className={`w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full text-lg md:text-xl ${
                             result.correctPositions > 0 
                               ? 'bg-green-200 border-2 border-green-600 text-green-900' 
                               : 'bg-slate-100 border-2 border-slate-400 text-slate-500'
@@ -319,62 +466,118 @@ export default function App() {
                         </div>
                       </div>
                     </motion.div>
-                  ))
-                )}
+                  ));
+                })()}
               </div>
             </div>
           </div>
 
           {/* Input Area - Fixed at Bottom */}
-          <div className="flex-shrink-0 border-t-2 border-blue-900 bg-[#fffef7] p-4 md:pl-14">
-            <p className="text-2xl md:text-xl text-blue-900 mb-3 text-center" style={{ fontFamily: 'Caveat, cursive' }}>
-              Your guess:
-            </p>
+          <div className="flex-shrink-0 border-t-2 border-blue-900 bg-[#fffef7] p-3 md:pl-14">
             {/* Message Display */}
             {message && (
-              <div className="text-center mb-3">
-                <p className="text-lg md:text-base text-red-600" style={{ fontFamily: 'Caveat, cursive' }}>
+              <div className="text-center mb-2">
+                <p className="text-sm md:text-base text-red-600" style={{ fontFamily: 'Caveat, cursive' }}>
                   {message}
                 </p>
-            </div>
-          )}
+              </div>
+            )}
 
             {/* Game Lost Message */}
             {gameLost && (
-              <div className="text-center mb-3">
-                <p className="text-lg md:text-base text-red-600" style={{ fontFamily: 'Caveat, cursive' }}>
+              <div className="text-center mb-2">
+                <p className="text-sm md:text-base text-red-600" style={{ fontFamily: 'Caveat, cursive' }}>
                   Game Over! The secret number was {secretNumber}
                 </p>
               </div>
             )}
 
-            {/* Mode Indicator */}
-            <div className="text-center mb-2">
-              <p className="text-sm md:text-xs text-slate-500" style={{ fontFamily: 'Caveat, cursive' }}>
-                {unlimitedMode ? 'Unlimited Mode' : '6 Guesses Limit'}
-              </p>
+            {/* Current Guess Display */}
+            <div className="flex justify-center items-center gap-2 mb-3">
+              {[0, 1, 2, 3].map((i) => (
+                <div 
+                  key={i}
+                  className="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center border-2 border-blue-900 bg-white rounded-sm text-2xl md:text-3xl text-blue-900"
+                  style={{ fontFamily: 'Caveat, cursive' }}
+                >
+                  {currentGuess[i] || '?'}
+                </div>
+              ))}
             </div>
 
-            <div className="flex gap-2 items-center justify-center">
+            {/* Mobile Numpad */}
+            <div className="md:hidden">
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                  <Button
+                    key={num}
+                    onClick={() => handleNumpadClick(num.toString())}
+                    disabled={gameWon || gameLost || player1Won || player2Won}
+                    className="h-12 text-2xl bg-blue-100 hover:bg-blue-200 text-blue-900 border-2 border-blue-900"
+                    style={{ fontFamily: 'Caveat, cursive' }}
+                  >
+                    {num}
+                  </Button>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  onClick={handleClear}
+                  disabled={gameWon || gameLost || player1Won || player2Won}
+                  variant="outline"
+                  className="h-12 text-lg border-2 border-red-600 text-red-600 hover:bg-red-50"
+                  style={{ fontFamily: 'Caveat, cursive' }}
+                >
+                  Clear
+                </Button>
+                <Button
+                  onClick={handleBackspace}
+                  disabled={gameWon || gameLost || player1Won || player2Won}
+                  variant="outline"
+                  className="h-12 text-lg border-2 border-orange-600 text-orange-600 hover:bg-orange-50"
+                  style={{ fontFamily: 'Caveat, cursive' }}
+                >
+                  ←
+                </Button>
+                <Button 
+                  onClick={handleSubmitGuess} 
+                  disabled={gameWon || gameLost || player1Won || player2Won || currentGuess.length !== 4}
+                  className="h-12 text-lg bg-green-600 hover:bg-green-700 text-white"
+                  style={{ fontFamily: 'Caveat, cursive' }}
+                >
+                  Check
+                </Button>
+              </div>
+            </div>
+
+            {/* Desktop Input */}
+            <div className="hidden md:flex gap-2 items-center justify-center">
               <Input
                 type="text"
                 placeholder="????"
                 value={currentGuess}
                 onChange={(e) => setCurrentGuess(e.target.value.replace(/[^1-9]/g, '').slice(0, 4))}
                 onKeyPress={handleKeyPress}
-                disabled={gameWon || gameLost}
+                disabled={gameWon || gameLost || player1Won || player2Won}
                 maxLength={4}
-                className="w-36 md:w-32 text-center tracking-[0.5em] border-2 border-blue-900 bg-white text-3xl md:text-2xl h-14 md:h-12"
+                className="w-32 text-center tracking-[0.5em] border-2 border-blue-900 bg-white text-2xl h-12"
                 style={{ fontFamily: 'Caveat, cursive' }}
               />
               <Button 
                 onClick={handleSubmitGuess} 
-                disabled={gameWon || gameLost || currentGuess.length !== 4}
-                className="bg-blue-900 hover:bg-blue-800 text-xl md:text-lg px-8 md:px-6 h-14 md:h-12"
+                disabled={gameWon || gameLost || player1Won || player2Won || currentGuess.length !== 4}
+                className="bg-blue-900 hover:bg-blue-800 text-lg px-6 h-12"
                 style={{ fontFamily: 'Caveat, cursive' }}
               >
                 Check
               </Button>
+            </div>
+
+            {/* Mode Indicator */}
+            <div className="text-center mt-2">
+              <p className="text-xs text-slate-500" style={{ fontFamily: 'Caveat, cursive' }}>
+                {unlimitedMode ? 'Unlimited Mode' : '6 Guesses Limit'}
+              </p>
             </div>
           </div>
         </div>
