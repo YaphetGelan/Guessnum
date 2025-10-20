@@ -248,7 +248,7 @@ export default function App() {
           }}
         >
           {/* Header Section */}
-          <div className="p-4 pb-2 pl-16 md:pl-14 flex-shrink-0">
+          <div className="p-4 pb-2 pl-12 md:pl-14 flex-shrink-0">
             <div className="flex items-start justify-between mb-2">
               <div style={{ fontFamily: 'Caveat, cursive' }}>
                 <h1 className="text-4xl md:text-3xl text-blue-900 underline decoration-wavy decoration-blue-400">
@@ -383,7 +383,7 @@ export default function App() {
           </div>
 
           {/* Table Section - Always visible, compact */}
-          <div className="flex-1 px-4 pl-16 md:pl-14 pb-2">
+          <div className="flex-1 px-4 pl-12 md:pl-14 pb-2">
             <h2 className="text-lg md:text-xl text-blue-900 mb-1 underline" style={{ fontFamily: 'Caveat, cursive' }}>
               {gameMode === 'single' ? 'My Guesses:' : `Player ${currentPlayer}'s Turn:`}
             </h2>
@@ -476,7 +476,7 @@ export default function App() {
           </div>
 
           {/* Input Area - Fixed at Bottom */}
-          <div className="flex-shrink-0 border-t-2 border-blue-900 bg-[#fffef7] p-3 pl-16 md:pl-14">
+          <div className="flex-shrink-0 border-t-2 border-blue-900 bg-[#fffef7] p-3 pl-12 md:pl-14">
             {/* Message Display */}
               {message && (
               <div className="text-center mb-2">
