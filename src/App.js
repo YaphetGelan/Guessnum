@@ -248,7 +248,7 @@ export default function App() {
           }}
         >
           {/* Header Section */}
-          <div className="p-4 pb-2 md:pl-14 flex-shrink-0">
+          <div className="p-4 pb-2 pl-16 md:pl-14 flex-shrink-0">
             <div className="flex items-start justify-between mb-2">
               <div style={{ fontFamily: 'Caveat, cursive' }}>
                 <h1 className="text-4xl md:text-3xl text-blue-900 underline decoration-wavy decoration-blue-400">
@@ -383,7 +383,7 @@ export default function App() {
           </div>
 
           {/* Table Section - Always visible, compact */}
-          <div className="flex-1 px-4 md:pl-14 pb-2">
+          <div className="flex-1 px-4 pl-16 md:pl-14 pb-2">
             <h2 className="text-lg md:text-xl text-blue-900 mb-1 underline" style={{ fontFamily: 'Caveat, cursive' }}>
               {gameMode === 'single' ? 'My Guesses:' : `Player ${currentPlayer}'s Turn:`}
             </h2>
@@ -403,7 +403,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Table Body - Show last 5 guesses */}
+              {/* Table Body - Show last 6 guesses */}
               <div className="space-y-1">
                 {(() => {
                   const currentGuesses = gameMode === 'single' ? guessHistory : 
@@ -417,8 +417,8 @@ export default function App() {
                     );
                   }
                   
-                  // Show only the last 5 guesses
-                  const recentGuesses = currentGuesses.slice(-5);
+                  // Show only the last 6 guesses
+                  const recentGuesses = currentGuesses.slice(-6);
                   
                   return recentGuesses.map((result, index) => (
                     <motion.div
@@ -476,7 +476,7 @@ export default function App() {
           </div>
 
           {/* Input Area - Fixed at Bottom */}
-          <div className="flex-shrink-0 border-t-2 border-blue-900 bg-[#fffef7] p-3 md:pl-14">
+          <div className="flex-shrink-0 border-t-2 border-blue-900 bg-[#fffef7] p-3 pl-16 md:pl-14">
             {/* Message Display */}
               {message && (
               <div className="text-center mb-2">
@@ -508,27 +508,27 @@ export default function App() {
               ))}
           </div>
 
-            {/* Mobile Numpad - Compact */}
+            {/* Mobile Numpad - Medium Size */}
             <div className="md:hidden">
-              <div className="grid grid-cols-3 gap-1 mb-1">
+              <div className="grid grid-cols-3 gap-1.5 mb-1.5">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                   <Button
                     key={num}
                     onClick={() => handleNumpadClick(num.toString())}
                     disabled={gameWon || gameLost || player1Won || player2Won}
-                    className="h-8 text-sm bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-900"
+                    className="h-10 text-base bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-900"
                     style={{ fontFamily: 'Caveat, cursive' }}
                   >
                     {num}
                   </Button>
                 ))}
               </div>
-              <div className="grid grid-cols-3 gap-1">
+              <div className="grid grid-cols-3 gap-1.5">
                 <Button
                   onClick={handleClear}
                   disabled={gameWon || gameLost || player1Won || player2Won}
                   variant="outline"
-                  className="h-8 text-xs border border-red-600 text-red-600 hover:bg-red-50"
+                  className="h-10 text-sm border border-red-600 text-red-600 hover:bg-red-50"
                   style={{ fontFamily: 'Caveat, cursive' }}
                 >
                   Clear
@@ -537,7 +537,7 @@ export default function App() {
                   onClick={handleBackspace}
                   disabled={gameWon || gameLost || player1Won || player2Won}
                   variant="outline"
-                  className="h-8 text-xs border border-orange-600 text-orange-600 hover:bg-orange-50"
+                  className="h-10 text-sm border border-orange-600 text-orange-600 hover:bg-orange-50"
                   style={{ fontFamily: 'Caveat, cursive' }}
                 >
                   ←
@@ -545,7 +545,7 @@ export default function App() {
                 <Button 
                   onClick={handleSubmitGuess} 
                   disabled={gameWon || gameLost || player1Won || player2Won || currentGuess.length !== 4}
-                  className="h-8 text-xs bg-green-600 hover:bg-green-700 text-white"
+                  className="h-10 text-sm bg-green-600 hover:bg-green-700 text-white"
                   style={{ fontFamily: 'Caveat, cursive' }}
                 >
                   Check
