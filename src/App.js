@@ -6,6 +6,7 @@ import { RefreshCw, Star, HelpCircle, Users, Calendar, Trophy } from 'lucide-rea
 import { motion, AnimatePresence } from 'motion/react';
 import MultiplayerGame from './components/MultiplayerGame';
 import DailyGame from './components/DailyGame';
+import { Analytics } from '@vercel/analytics/react';
 
   const generateNewGame = () => {
   let num = '';
@@ -681,6 +682,9 @@ export default function App() {
 
       {/* Load Caveat font */}
       <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap" rel="stylesheet" />
+      
+      {/* Vercel Analytics */}
+      <Analytics />
     </div>
   );
 }

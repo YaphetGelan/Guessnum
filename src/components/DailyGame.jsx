@@ -4,6 +4,7 @@ import { Input } from './ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { RefreshCw, Star, HelpCircle, Trophy, Calendar, Flame } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Analytics } from '@vercel/analytics/react';
 
 const DailyGame = ({ onBackToSingle, userId }) => {
   const [gameMode, setGameMode] = useState('no0'); // 'no0' or 'with0'
@@ -550,6 +551,9 @@ const DailyGame = ({ onBackToSingle, userId }) => {
 
       {/* Load Caveat font */}
       <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&display=swap" rel="stylesheet" />
+      
+      {/* Vercel Analytics */}
+      <Analytics />
     </div>
   );
 };

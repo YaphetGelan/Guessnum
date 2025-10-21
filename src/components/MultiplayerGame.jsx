@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { RefreshCw, Star, HelpCircle, Users, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import io from 'socket.io-client';
+import { Analytics } from '@vercel/analytics/react';
 
 const MultiplayerGame = ({ onBackToSingle }) => {
   const [socket, setSocket] = useState(null);
@@ -220,6 +221,9 @@ const MultiplayerGame = ({ onBackToSingle }) => {
               </Button>
             </div>
           </div>
+          
+          {/* Vercel Analytics */}
+          <Analytics />
         </motion.div>
       </div>
     );
@@ -375,6 +379,9 @@ const MultiplayerGame = ({ onBackToSingle }) => {
             </div>
           </div>
         </div>
+        
+        {/* Vercel Analytics */}
+        <Analytics />
       </motion.div>
     </div>
   );
