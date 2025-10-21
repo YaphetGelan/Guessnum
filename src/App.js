@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './components/ui/dialog';
-import { RefreshCw, Star, HelpCircle, Users, Calendar, Trophy } from 'lucide-react';
+import { RefreshCw, Star, HelpCircle, Users, Calendar, Trophy, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import MultiplayerGame from './components/MultiplayerGame';
 import DailyGame from './components/DailyGame';
+import FAQ from './components/FAQ';
+import About from './components/About';
 import { Analytics } from '@vercel/analytics/react';
 
   const generateNewGame = () => {
@@ -63,6 +65,9 @@ export default function App() {
   const [player2Won, setPlayer2Won] = useState(false);
   const [showMultiplayer, setShowMultiplayer] = useState(false);
   const [showDailyGame, setShowDailyGame] = useState(false);
+  const [showFAQ, setShowFAQ] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [userId, setUserId] = useState(null);
   const [userName, setUserName] = useState('');
   const [showLogin, setShowLogin] = useState(false);
@@ -271,6 +276,14 @@ export default function App() {
     return <DailyGame onBackToSingle={() => setShowDailyGame(false)} userId={userId} />;
   }
 
+  if (showFAQ) {
+    return <FAQ onBackToGame={() => setShowFAQ(false)} />;
+  }
+
+  if (showAbout) {
+    return <About onBackToGame={() => setShowAbout(false)} />;
+  }
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !gameWon && !gameLost && !player1Won && !player2Won) {
       handleSubmitGuess();
@@ -335,12 +348,23 @@ export default function App() {
               <div style={{ fontFamily: 'Caveat, cursive' }}>
                 <h1 className="text-4xl md:text-3xl text-blue-900 underline decoration-wavy decoration-blue-400">
                   Number Game
-                </h1>
+        </h1>
                 <p className="text-xl md:text-lg text-slate-600 italic">
                   Guess the secret!
                 </p>
               </div>
               <div className="flex gap-2">
+                {/* Menu Button */}
+                <Button
+                  onClick={() => setShowMenu(!showMenu)}
+                  size="icon"
+                  variant="outline"
+                  className="border-2 border-slate-600 hover:bg-slate-50 text-slate-900 rounded-full"
+                  title="Menu"
+                >
+                  {showMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </Button>
+                
                 <Button 
                   onClick={startDailyGame}
                   size="icon"
@@ -416,6 +440,69 @@ export default function App() {
                 </Button>
               </div>
           </div>
+
+            {/* Dropdown Menu */}
+            <AnimatePresence>
+              {showMenu && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-16 right-4 bg-white rounded-lg shadow-xl border border-slate-200 p-4 z-50 min-w-48"
+                >
+                  <div className="space-y-2">
+                    <Button
+                      onClick={() => {
+                        setShowAbout(true);
+                        setShowMenu(false);
+                      }}
+                      variant="ghost"
+                      className="w-full justify-start text-left"
+                      style={{ fontFamily: 'Caveat, cursive' }}
+                    >
+                      <Trophy className="w-4 h-4 mr-2" />
+                      About Game
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowFAQ(true);
+                        setShowMenu(false);
+                      }}
+                      variant="ghost"
+                      className="w-full justify-start text-left"
+                      style={{ fontFamily: 'Caveat, cursive' }}
+                    >
+                      <HelpCircle className="w-4 h-4 mr-2" />
+                      FAQ
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowDailyGame(true);
+                        setShowMenu(false);
+                      }}
+                      variant="ghost"
+                      className="w-full justify-start text-left"
+                      style={{ fontFamily: 'Caveat, cursive' }}
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Daily Challenge
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowMultiplayer(true);
+                        setShowMenu(false);
+                      }}
+                      variant="ghost"
+                      className="w-full justify-start text-left"
+                      style={{ fontFamily: 'Caveat, cursive' }}
+                    >
+                      <Users className="w-4 h-4 mr-2" />
+                      Multiplayer
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Win Message */}
             <AnimatePresence>
